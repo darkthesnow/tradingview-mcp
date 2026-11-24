@@ -15,6 +15,7 @@ import { registerUiTools } from './tools/ui.js';
 import { registerPaneTools } from './tools/pane.js';
 import { registerTabTools } from './tools/tab.js';
 import { registerOptionsTools } from './tools/options.js';
+import { registerSnapshotTools } from './tools/snapshot.js';
 
 const server = new McpServer(
   {
@@ -23,7 +24,7 @@ const server = new McpServer(
     description: 'AI-assisted TradingView chart analysis and Pine Script development via Chrome DevTools Protocol',
   },
   {
-    instructions: `TradingView MCP — 85 tools for reading and controlling a live TradingView Desktop chart.
+    instructions: `TradingView MCP — 86 tools for reading and controlling a live TradingView Desktop chart.
 
 TOOL SELECTION GUIDE — use this to pick the right tool:
 
@@ -32,6 +33,7 @@ Reading your chart:
 - data_get_study_values → get current numeric values from ALL visible indicators (RSI, MACD, BB, EMA, etc.)
 - quote_get → get real-time price snapshot (last, OHLC, volume)
 - data_get_ohlcv → get price bars. ALWAYS pass summary=true unless you need individual bars
+- data_get_snapshot → one read-only call for real-time analysis: latest bar + session stats, watchlist quotes, options summary, last N bars, indicator values. Poll it (e.g. once a minute); trim with only/bars
 - options_get_chain → read the options chain from an open options-chain page (bid/ask, IV, Greeks, volume/OI per strike)
 
 Reading custom Pine indicator output (line.new/label.new/table.new/box.new drawings):
@@ -87,6 +89,7 @@ registerUiTools(server);
 registerPaneTools(server);
 registerTabTools(server);
 registerOptionsTools(server);
+registerSnapshotTools(server);
 
 // Startup notice (stderr so it doesn't interfere with MCP stdio protocol)
 process.stderr.write('⚠  tradingview-mcp  |  Unofficial tool. Not affiliated with TradingView Inc. or Anthropic.\n');

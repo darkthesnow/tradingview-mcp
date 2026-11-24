@@ -1,6 +1,6 @@
 # TradingView MCP — Claude Instructions
 
-85 tools for reading and controlling a live TradingView Desktop chart via CDP (port 9222).
+86 tools for reading and controlling a live TradingView Desktop chart via CDP (port 9222).
 
 ## Decision Tree — Which Tool When
 
@@ -23,6 +23,11 @@ Use `study_filter` parameter to target a specific indicator by name substring (e
 - `data_get_ohlcv` with `summary: true` → compact stats (high, low, range, change%, avg volume, last 5 bars)
 - `data_get_ohlcv` without summary → all bars (use `count` to limit, default 100)
 - `quote_get` → single latest price snapshot
+
+### "Follow a symbol in real time"
+- `data_get_snapshot` → one read-only call: the chart symbol's latest bar, day change and regular-session stats, the watchlist quotes, an options digest, the last N bars and the chart's indicator values
+- Poll it as often as needed — once a minute is plenty, a call takes a few hundred milliseconds. Trim it with `only` and `bars` when every snapshot lands in your context
+- It never switches the chart: it reads whichever symbol and timeframe are on it. The watchlist section needs the watchlist panel open and the options digest needs the symbol's options-chain page open; neither is opened for you
 
 ### "Read the options chain"
 - `options_get_chain` → strikes with bid/ask, IV, Greeks, volume, open interest, from an open options-chain page
@@ -103,6 +108,7 @@ These tools can return large payloads. Follow these rules to avoid context bloat
 7. **Call `chart_get_state` once** at the start to get entity IDs, then reference them — don't re-call repeatedly
 8. **Cap your OHLCV requests** — `count: 20` for quick analysis, `count: 100` for deeper work, `count: 500` only when specifically needed
 9. **Narrow `options_get_chain`** — ~22KB by default (4 expirations × 6 strikes); pass `expiration` or lower `around_atm` unless you need the whole chain
+10. **Trim `data_get_snapshot` when polling** — ~9KB with every section; pass `only: ["quote", "options"]` or lower `bars` unless you need it all
 
 ### Output Size Estimates (compact mode)
 | Tool | Typical Output |
@@ -116,6 +122,7 @@ These tools can return large payloads. Follow these rules to avoid context bloat
 | `data_get_ohlcv` (summary) | ~500 bytes |
 | `data_get_ohlcv` (100 bars) | ~8 KB |
 | `options_get_chain` | ~22KB (default 4 expirations × 6 strikes) |
+| `data_get_snapshot` | ~9KB (all sections) / ~800B (`only: ["quote"]`) |
 | `capture_screenshot` | ~300 bytes (returns file path, not image data) |
 
 ## Tool Conventions
@@ -128,6 +135,7 @@ These tools can return large payloads. Follow these rules to avoid context bloat
 - OHLCV capped at 500 bars, trades at 20 per request
 - Pine labels capped at 50 per study by default (pass `max_labels` to override)
 - `options_get_chain` reads a separate options-chain page, not the chart — that page must be open, and the tool never changes it
+- `data_get_snapshot` is read-only and never switches the chart. Its session stats come from the bars the chart has loaded (`complete: false` when they don't reach back to the session open) and its volume is the chart feed's, so it differs from the watchlist's day volume
 
 ## Architecture
 

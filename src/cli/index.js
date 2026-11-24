@@ -26,6 +26,7 @@ import './commands/pane.js';
 import './commands/tab.js';
 import './commands/stream.js';
 import './commands/options.js';
+import './commands/snapshot.js';
 
 // Run
 import { run } from './router.js';

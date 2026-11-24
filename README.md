@@ -160,13 +160,14 @@ tv pine compile                    # compile Pine Script
 tv pane layout 2x2                 # 4-chart grid
 tv pane symbol 1 ES1!              # set pane symbol
 tv stream quote | jq '.close'      # monitor price changes
+tv snapshot                         # one real-time analysis snapshot
 ```
 
 ### All Commands
 
 ```
 tv status / launch / state / symbol / timeframe / type / info / search
-tv quote / ohlcv / values
+tv quote / ohlcv / values / snapshot
 tv data lines/labels/tables/boxes/strategy/trades/equity/depth/indicator
 tv pine get/set/compile/analyze/check/save/new/open/list/errors/console
 tv draw shape/list/get/remove/clear
@@ -201,6 +202,16 @@ tv stream tables --filter Profiler       # table data monitoring
 tv stream all                            # all panes at once (multi-symbol)
 ```
 
+`tv stream` writes a line only when something changes. For a steady series — one full analysis snapshot on every interval — use `tv snapshot`:
+
+```bash
+tv snapshot                              # one snapshot, as a JSON object
+tv snapshot --interval 60000             # one snapshot per minute as JSONL, until Ctrl+C
+tv snapshot --interval 300000 --only quote,options --bars 0   # every 5 minutes, quote and options only
+```
+
+Each snapshot holds the chart symbol's latest bar, day change and regular-session stats, the watchlist quotes, an options digest from the open options-chain page, the last N bars and the chart's current indicator values. It is read-only: nothing is switched, opened or clicked.
+
 ## How Claude Knows Which Tool to Use
 
 Claude reads [`CLAUDE.md`](CLAUDE.md) automatically when working in this project. It contains a complete decision tree:
@@ -218,8 +229,9 @@ Claude reads [`CLAUDE.md`](CLAUDE.md) automatically when working in this project
 | "Draw a level at 24500" | `draw_shape` (horizontal_line) |
 | "Take a screenshot" | `capture_screenshot` |
 | "Read TSLA's options chain" | `options_get_chain` |
+| "Follow TSLA in real time" | `data_get_snapshot`, polled as often as needed (once a minute is plenty) |
 
-## Tool Reference (85 MCP tools)
+## Tool Reference (86 MCP tools)
 
 ### Chart Reading
 
@@ -229,6 +241,9 @@ Claude reads [`CLAUDE.md`](CLAUDE.md) automatically when working in this project
 | `data_get_study_values` | Read current RSI, MACD, BB, EMA values from all indicators | ~500B |
 | `quote_get` | Get latest price, OHLC, volume | ~200B |
 | `data_get_ohlcv` | Get price bars. **Use `summary: true`** for compact stats | 500B (summary) / 8KB (100 bars) |
+| `data_get_snapshot` | One read-only call for real-time analysis: latest bar + session stats, watchlist quotes, options digest, last N bars, indicator values | ~9KB (all sections) / ~800B (`only: ["quote"]`) |
+
+`data_get_snapshot` is the call to poll when following a symbol. Trim it with `only` and `bars` when every snapshot lands in your context. It never switches the chart: it reads whichever symbol and timeframe are on it and takes the day change from that symbol's own watchlist row. The watchlist section needs the watchlist panel open and the options section needs the symbol's options-chain page open — otherwise they report `available: false`. In the options digest, volume, open interest, put/call ratios and max pain are only available for the expiration expanded on that page.
 
 ### Options Chain
 
@@ -335,6 +350,7 @@ Tools return compact output by default to minimize context usage. For a typical 
 | Indicator inputs | Encrypted/encoded blobs auto-filtered |
 | `verbose: true` | Pass on any pine tool to get raw data with IDs/colors when needed |
 | `study_filter` | Target one indicator instead of scanning all |
+| `data_get_snapshot` `only` / `bars` | Keep just the sections and bars you need from each polled snapshot; indicator inputs drop the built-in scripts' source blobs |
 
 ## Finding TradingView on Your System
 
@@ -363,7 +379,7 @@ npm test
 Claude Code  ←→  MCP Server (stdio)  ←→  CDP (port 9222)  ←→  TradingView Desktop (Electron)
 ```
 
-- **Transport**: MCP over stdio (85 tools) + CLI (`tv` command, 30 commands with 72 subcommands)
+- **Transport**: MCP over stdio (86 tools) + CLI (`tv` command, 31 commands with 72 subcommands)
 - **Connection**: Chrome DevTools Protocol on localhost:9222
 - **Streaming**: Poll-and-diff loop with deduplication, JSONL output to stdout
 - **No dependencies** beyond `@modelcontextprotocol/sdk` and `chrome-remote-interface`
