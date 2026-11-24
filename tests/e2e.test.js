@@ -22,6 +22,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import CDP from 'chrome-remote-interface';
+import { getOptionsChain } from '../src/core/options.js';
 
 let client;
 let Runtime;
@@ -1432,7 +1433,35 @@ val = array.get(a, 5)`;
     });
   });
 
-  // ─── 13. CONTEXT SIZE VALIDATION ──────────────────────────────────────
+  // ─── 13. OPTIONS CHAIN (1 tool) ───────────────────────────────────────
+
+  describe('Options chain', () => {
+
+    it('options_get_chain — reads an open options chain page', async (t) => {
+      const targets = await CDP.List({ host: 'localhost', port: 9222 });
+      if (!targets.some(tg => tg.type === 'page' && /options-chain/.test(tg.url || ''))) {
+        t.skip('no options chain page is open in TradingView Desktop');
+        return;
+      }
+
+      const result = await getOptionsChain({ around_atm: 2, max_expirations: 1 });
+      assert.equal(result.success, true);
+      assert.equal(result.source, 'options_chain_page');
+      assert.match(result.symbol, /^[A-Z0-9.\-]+:[A-Z0-9.\-]+$/);
+      assert.equal(result.expirations.length, 1);
+      assert.equal(result.expirations[0].rows.length, 2);
+      for (const row of result.expirations[0].rows) {
+        assert.equal(typeof row.strike, 'number');
+        for (const side of ['call', 'put']) {
+          assert.match(row[side].symbol, /^OPRA:/);
+          assert.equal(typeof row[side].iv, 'number');
+          assert.equal(typeof row[side].delta, 'number');
+        }
+      }
+    });
+  });
+
+  // ─── 14. CONTEXT SIZE VALIDATION ──────────────────────────────────────
 
   describe('Context Size Validation', () => {
 

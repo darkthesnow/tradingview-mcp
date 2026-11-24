@@ -176,6 +176,7 @@ tv indicator add/remove/toggle/set/get
 tv layout list/switch
 tv pane list/layout/focus/symbol
 tv tab list/new/close/switch
+tv options chain
 tv replay start/step/stop/status/autoplay/trade
 tv stream quote/bars/values/lines/labels/tables/all
 tv ui click/keyboard/hover/scroll/find/eval/type/panel/fullscreen/mouse
@@ -216,8 +217,9 @@ Claude reads [`CLAUDE.md`](CLAUDE.md) automatically when working in this project
 | "Set up a 4-chart grid" | `pane_set_layout` → `pane_set_symbol` for each pane |
 | "Draw a level at 24500" | `draw_shape` (horizontal_line) |
 | "Take a screenshot" | `capture_screenshot` |
+| "Read TSLA's options chain" | `options_get_chain` |
 
-## Tool Reference (78 MCP tools)
+## Tool Reference (85 MCP tools)
 
 ### Chart Reading
 
@@ -227,6 +229,14 @@ Claude reads [`CLAUDE.md`](CLAUDE.md) automatically when working in this project
 | `data_get_study_values` | Read current RSI, MACD, BB, EMA values from all indicators | ~500B |
 | `quote_get` | Get latest price, OHLC, volume | ~200B |
 | `data_get_ohlcv` | Get price bars. **Use `summary: true`** for compact stats | 500B (summary) / 8KB (100 bars) |
+
+### Options Chain
+
+| Tool | When to use | Output size |
+|------|------------|-------------|
+| `options_get_chain` | Read an open options-chain page: bid/ask, IV, Greeks, volume, open interest per strike | ~22KB (default 4 expirations × 6 strikes) |
+
+The chain lives on its own page, so open the symbol's **Options** tab in TradingView Desktop first — the tool is read-only and never opens it. Narrow it with `expiration`, `around_atm` and `max_expirations`; `fields: "all"` adds spread, intrinsic/extrinsic and more. Only the expiration expanded on the page carries displayed volume and open interest; the others return `null` for those (see `notes`).
 
 ### Custom Indicator Data (Pine Drawings)
 
@@ -353,7 +363,7 @@ npm test
 Claude Code  ←→  MCP Server (stdio)  ←→  CDP (port 9222)  ←→  TradingView Desktop (Electron)
 ```
 
-- **Transport**: MCP over stdio (84 tools) + CLI (`tv` command, 30 commands with 66 subcommands)
+- **Transport**: MCP over stdio (85 tools) + CLI (`tv` command, 30 commands with 72 subcommands)
 - **Connection**: Chrome DevTools Protocol on localhost:9222
 - **Streaming**: Poll-and-diff loop with deduplication, JSONL output to stdout
 - **No dependencies** beyond `@modelcontextprotocol/sdk` and `chrome-remote-interface`
